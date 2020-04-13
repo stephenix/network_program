@@ -2,19 +2,23 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
+#include <poll.h>
 #include <sys/socket.h>     // connect,listen,accept
 #include <netinet/in.h>
 
 #define LISTENQ 10
 #define MAXLINE 20
 #define SERV_PORT 9877 
+#define INFTIM -1
 int main() {
     int listenfd, connfd;
     pid_t childpid;
     socklen_t clilen;
     struct sockaddr_in cliaddr, servaddr;
-    int client[FD_SETSIZE], nready;
-    int maxfd, maxi, i, sockfd, n;
+    struct pollfd client[FOPEN_MAX];
+    int maxfd, maxi, i, sockfd, n, nready;
     fd_set rset, allset;
     char buf[MAXLINE];
 
@@ -27,40 +31,36 @@ int main() {
     bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
     listen(listenfd, LISTENQ);
 
-    maxfd = listenfd;
-    maxi = -1;
-    for (i = 0; i < FD_SETSIZE; i ++)
-        client[i] = -1;
-    FD_ZERO(&allset);
-    FD_SET(listenfd, &allset);
+    client[0].fd = listenfd; 
+    client[0].events = POLLRDNORM;
+    for (i = 1; i < FOPEN_MAX; i ++)
+        client[i].fd = -1;
+    // max index into client[] array
+    maxi = 0;
 
     while (1) {
-        // go back initial state in every loop 
-        rset = allset;
-        // select等待某个事件发生、或是新客户的建立、或是数据、FIN或RST的到达。
-        nready = select(maxfd + 1, &rset, NULL, NULL, NULL);
+        // INFTIM是永远等待
+        nready = poll(client, maxi + 1, INFTIM);
 
         // new client connection
-        if (FD_ISSET(listenfd, &rset)) {
+        if (client[0].revents & POLLRDNORM) {
             clilen = sizeof(cliaddr);
             connfd = accept(listenfd, (struct sockaddr *)&cliaddr, &clilen);
 
             // set client[] to save cur connfd
-            for (i = 0; i < FD_SETSIZE; i ++) {
-                if (client[i] < 0) {
-                    client[i] = connfd; 
+            for (i = 1; i < FOPEN_MAX; i ++) {
+                if (client[i].fd < 0) {
+                    client[i].fd = connfd; 
                     break;
                 }
             }
-            if (i == FD_SETSIZE) {
+            if (i == FOPEN_MAX) {
                 perror("too many clients.\n");
                 return -1;
             }
-            // set allset not rset?
-            FD_SET(connfd, &allset);
-            // for select
-            if (connfd > maxfd)
-                maxfd = connfd;
+            // set interest event 
+            client[i].events = POLLRDNORM;
+
             // max index in client[] array
             if (i > maxi)
                 maxi = i;
@@ -70,16 +70,24 @@ int main() {
         }
 
         // check all clients for data
-        for (i = 0; i <= maxi; i ++) {
-            if ((sockfd = client[i]) < 0)
+        for (i = 1; i <= maxi; i ++) {
+            if ((sockfd = client[i].fd) < 0)
                 continue;
-            if (FD_ISSET(sockfd, &rset)) {
+            if (client[i].revents & (POLLRDNORM | POLLERR)) {
                 // read eof
-                if ((n = read(sockfd, buf, MAXLINE)) == 0) {
+                if ((n = read(sockfd, buf, MAXLINE)) < 0) {
+                    // connection reset by client
+                    if (errno == ECONNRESET) {
+                        close(sockfd);
+                        client[i].fd = -1;
+                    } else {
+                        perror("read error.\n");
+                        return -1;
+                    }
+                } else if (n == 0) {
                     // connection closed by client
                     close(sockfd);
-                    FD_CLR(sockfd, &allset);
-                    client[i] = -1;
+                    client[i].fd = -1;
                 } else {
                     write(sockfd, buf, n);
                 }
