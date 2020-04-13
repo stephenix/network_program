@@ -29,8 +29,39 @@ int main(int argc, char** argv) {
 
     return 0;
 }
-
+// select edition
 void str_cli(FILE *fp, int sockfd) {
+    char send[MAXLINE], recieve[MAXLINE];
+    fd_set rset; 
+    int maxfdp1;
+
+    FD_ZERO(rset);
+
+    for (;;) {
+        FD_SET(fileno(fp), &rset);
+        FD_SET(sockfd, &rset);
+        maxfdp1 = max(fileno(fp), sockfd) + 1;
+        select(maxfdp1, &rset, NULL, NULL, NULL);
+
+        if (FD_ISSET(sockfd, &rset)) {
+            if (read(sockfd, recieve, MAXLINE) == 0) {
+                printf("read error from socket.\n");
+                return;
+            }
+            fputs(recieve, stdout);
+        }
+        if (FD_ISSET(sockfd, &rset)) {
+            if (fgets(send, MAXLINE, fp) == NULL) {
+                printf("read error from stdin.\n");
+                return;
+            }
+            write(sockfd, send, strlen(send));
+        }
+    }
+}
+
+// orignal edition
+void str_cli_orig(FILE *fp, int sockfd) {
     char send[MAXLINE], recieve[MAXLINE];
     while (fgets(send, MAXLINE, fp) != NULL) {
         write(sockfd, send, strlen(send));
