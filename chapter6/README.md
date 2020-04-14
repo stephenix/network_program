@@ -29,7 +29,8 @@ rset is changed by select, so need allset keep set state.
 
 **Reference：**
 
-[1] https://www.cnblogs.com/webor2006/p/4055284.html
+[1] 《UNIX网络编程:卷1》
+[2] https://www.cnblogs.com/webor2006/p/4055284.html
 
 ## 二、poll
 
@@ -41,8 +42,8 @@ int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 
 struct pollfd {
 	int fd;                 /* 文件描述符 /
-    short events;           / 等待的事件 /
-    short revents;          / 实际发生了的事件 */
+	short events;           / 等待的事件 /
+	short revents;          / 实际发生了的事件 */
 };
 ```
 

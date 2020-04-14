@@ -7,6 +7,7 @@
 
 #define MAXLINE 100
 #define SERV_PORT 9877 
+#define max(a, b) ((a) > (b)) ? (a) : (b)
 void str_cli(FILE *fp, int sockfd);
 int main(int argc, char** argv) {
     int sockfd;
@@ -35,7 +36,7 @@ void str_cli(FILE *fp, int sockfd) {
     fd_set rset; 
     int maxfdp1;
 
-    FD_ZERO(rset);
+    FD_ZERO(&rset);
 
     for (;;) {
         FD_SET(fileno(fp), &rset);
@@ -49,8 +50,9 @@ void str_cli(FILE *fp, int sockfd) {
                 return;
             }
             fputs(recieve, stdout);
+	        bzero(recieve, MAXLINE);
         }
-        if (FD_ISSET(sockfd, &rset)) {
+        if (FD_ISSET(fileno(fp), &rset)) {
             if (fgets(send, MAXLINE, fp) == NULL) {
                 printf("read error from stdin.\n");
                 return;
