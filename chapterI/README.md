@@ -6,7 +6,7 @@
 
 ```c
 #include <sys/epoll.h>
-int epoll_create(int size)；
+int epoll_create(int size)；	// 原来是hash表，所以size有用，现在是红黑树，故不使用
 int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)；
 int epoll_wait(int epfd, struct epoll_event * events, int maxevents, int timeout);
 ```
@@ -73,6 +73,16 @@ rset is changed by select, so need allset keep set state.
 [2] https://www.cnblogs.com/Anker/archive/2013/08/17/3263780.html
 
 ## 二、比较
+
+Select:
+
+Poll:
+
+Poll:
+
+
+
+
 
 epoll利用内核发现事件准备就绪，callback通知，epoll_wait收到通知，避免select/poll，进程遍历查找准备就绪的事件。
 
