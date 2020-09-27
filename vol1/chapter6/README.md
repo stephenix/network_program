@@ -23,7 +23,13 @@ because next receive buffer length may be shorter than last receive buffer.
 
 2. select_server.c
 
-the role of allset and rset
+(1) select wait for new client connection or data arriving 
+    
+    while loop only handle connection or read/write one time, 
+
+    so when nready == 1 continue. 
+
+(2) the role of allset and rset
 
 rset is changed by select, so need allset keep set state.
 
